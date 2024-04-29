@@ -4,7 +4,7 @@
     <UserInfoHeader />
     <div class="content">
       <div class="content-left">
-        <a-grid :cols="24" :col-gap="16" :row-gap="16">
+        <a-grid :col-gap="16" :cols="24" :row-gap="16">
           <a-grid-item :span="24">
             <MyProject />
           </a-grid-item>
@@ -18,7 +18,7 @@
           <a-grid-item :span="24">
             <MyTeam />
           </a-grid-item>
-          <a-grid-item class="panel" :span="24">
+          <a-grid-item :span="24" class="panel">
             <LatestNotification />
           </a-grid-item>
         </a-grid>
@@ -41,7 +41,7 @@
   };
 </script>
 
-<style scoped lang="less">
+<style lang="less" scoped>
   .container {
     padding: 0 20px 20px 20px;
   }
@@ -75,10 +75,12 @@
   .mobile {
     .content {
       display: block;
+
       &-left {
         margin-right: 0;
         margin-bottom: 16px;
       }
+
       &-right {
         width: 100%;
       }
