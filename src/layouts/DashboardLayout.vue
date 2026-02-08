@@ -2,33 +2,33 @@
 import { useAuth } from '@/composables/useAuth';
 import { useTenantStore } from '@/stores/tenant';
 import type { Tenant } from '@/types';
-import {
-  NAvatar,
-  NButton,
-  NDropdown,
-  NLayout,
-  NLayoutContent,
-  NLayoutHeader,
-  NLayoutSider,
-  NMenu,
-  NSkeleton,
-} from 'naive-ui';
-import type { MenuOption } from 'naive-ui';
-import { computed, h, onMounted, inject, type Ref } from 'vue';
+import { computed, onMounted, inject, type Ref, ref, h } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { Icon } from '@vicons/utils';
-import { Home, Sunny, Moon, ServerOutline, MegaphoneOutline, ArrowForward } from '@vicons/ionicons5';
+import {
+  ChevronLeftIcon,
+  ChevronDownIcon,
+  ChevronRightIcon,
+  DashboardIcon,
+  LogoutIcon,
+  MoonIcon,
+  ServerIcon,
+  SunnyIcon,
+  LoudspeakerIcon,
+  ArrowRightIcon,
+  UserIcon,
+} from 'tdesign-icons-vue-next';
 
 const route = useRoute();
 const router = useRouter();
 const { user, loading: authLoading, isAuthenticated, initialize, signOut } = useAuth();
 const tenantStore = useTenantStore();
+const isCollapsed = ref(false);
 
 const iconMap: Record<string, any> = {
-  'dashboard': Home,
-  'Nodes': ServerOutline,
-  'Announcements': MegaphoneOutline,
-  'Tunnels': ArrowForward,
+  dashboard: DashboardIcon,
+  Nodes: ServerIcon,
+  Announcements: LoudspeakerIcon,
+  Tunnels: ArrowRightIcon,
 };
 
 // 主题切换
@@ -55,43 +55,42 @@ const menuItems = computed(() => {
   return layoutRoute.children.map(child => ({
     path: '/' + child.path,
     title: child.meta?.title as string || child.name as string || '',
-    icon: iconMap[child.name as string] || Home,
+    icon: iconMap[child.name as string] || DashboardIcon,
   }));
 });
 
-const menuOptions = computed<MenuOption[]>(() =>
-  menuItems.value.map((item) => ({
-    label: item.title,
-    key: item.path,
-    icon: () => h(Icon, { size: 18 }, { default: () => h(item.icon) }),
-  })),
-);
 
 const tenantMenuOptions = computed(() =>
   tenantStore.tenants.map((tenant: Tenant) => ({
-    label: tenant.name,
-    key: tenant.id,
+    content: tenant.name,
+    value: tenant.id,
   })),
 );
 
 const userMenuOptions = [
-  { type: 'divider' },
-  { label: '退出登录', key: 'logout' },
+  { content: '退出登录', value: 'logout', prefixIcon: () => h(LogoutIcon) },
 ];
 
-function handleMenuSelect(key: string) {
-  router.push(key);
+function handleMenuSelect(key: string | number) {
+  router.push(String(key));
 }
 
-function handleTenantSelect(key: number) {
-  const tenant = tenantStore.tenants.find((t) => t.id === key);
+function toggleCollapse() {
+  isCollapsed.value = !isCollapsed.value;
+}
+
+function handleTenantSelect(option: number | { value?: number }) {
+  const selectedValue = typeof option === 'number' ? option : option.value;
+  if (typeof selectedValue !== 'number') return;
+  const tenant = tenantStore.tenants.find((t) => t.id === selectedValue);
   if (tenant) {
     tenantStore.setCurrentTenant(tenant);
   }
 }
 
-function handleUserMenuSelect(key: string) {
-  if (key === 'logout') {
+function handleUserMenuSelect(option: string | number | { value?: string | number }) {
+  const selectedValue = typeof option === 'object' ? option.value : option;
+  if (selectedValue === 'logout') {
     signOut();
     router.push('/login');
   }
@@ -104,52 +103,139 @@ onMounted(() => {
 </script>
 
 <template>
-  <n-layout has-sider style="height: 100vh">
-    <n-layout-sider bordered collapse-mode="width" :collapsed-width="72" :width="280" show-trigger>
-      <div style="padding: 16px; border-bottom: 1px solid var(--n-border-color)">
-        <h3 style="margin: 0; text-align: center">TYZ Panel</h3>
-      </div>
-
-      <n-menu :value="activeMenuKey" :collapsed-width="72" :collapsed-icon-size="20" :options="menuOptions"
-        @update:value="handleMenuSelect" style="flex: 1" />
-    </n-layout-sider>
-
-    <n-layout>
-      <n-layout-header bordered style="padding: 12px 16px; display: flex; justify-content: flex-end">
-        <div style="display: flex; align-items: center; gap: 12px">
-          <!-- 主题切换 -->
-          <n-button quaternary circle @click="toggleTheme">
-            <template #icon>
-              <Icon size="18">
-                <component :is="isDark ? Sunny : Moon" />
-              </Icon>
-            </template>
-          </n-button>
-
-          <!-- 租户选择 -->
-          <n-dropdown :options="tenantMenuOptions" trigger="click" @select="handleTenantSelect">
-            <n-button quaternary>
-              <n-avatar size="small" style="margin-right: 8px" />
-              {{ tenantStore.currentTenant?.name || '选择租户' }}
-            </n-button>
-          </n-dropdown>
-
-          <!-- 用户菜单 -->
-          <template v-if="!authLoading && isAuthenticated">
-            <n-dropdown :options="userMenuOptions" @select="handleUserMenuSelect">
-              <div style="display: flex; align-items: center; gap: 8px; cursor: pointer">
-                <n-avatar round :size="32" />
-                <span>{{ user?.email || '用户' }}</span>
-              </div>
-            </n-dropdown>
+  <t-layout class="layout-wrapper">
+    <t-aside :width="isCollapsed ? '72px' : '280px'" class="layout-aside">
+      <t-menu :value="activeMenuKey" :collapsed="isCollapsed" @change="handleMenuSelect">
+        <template #logo>
+          <div class="aside-logo">
+            <span v-show="!isCollapsed">TYZ Panel</span>
+            <span v-show="isCollapsed" class="collapsed-logo">T</span>
+          </div>
+        </template>
+        <t-menu-item v-for="item in menuItems" :key="item.path" :value="item.path">
+          <template #icon>
+            <component :is="item.icon" />
           </template>
-          <n-skeleton v-else circle size="medium" />
-        </div>
-      </n-layout-header>
+          {{ item.title }}
+        </t-menu-item>
+        <template #operations>
+          <t-button variant="text" shape="circle" size="small" @click="toggleCollapse">
+            <component :is="isCollapsed ? ChevronRightIcon : ChevronLeftIcon" />
+          </t-button>
+        </template>
+      </t-menu>
+    </t-aside>
 
-      <n-layout-content style="max-width: 1600px; margin: 0 auto; padding: 0;">
-        <router-view />
-      </n-layout-content>
-    </n-layout>
-  </n-layout>
+    <t-layout>
+      <t-header class="layout-header">
+        <div class="header-wrapper">
+          <t-space align="center" size="medium" class="header-actions">
+            <!-- 主题切换 -->
+            <t-button theme="default" variant="text" shape="circle" @click="toggleTheme">
+              <component :is="isDark ? SunnyIcon : MoonIcon" />
+            </t-button>
+
+            <!-- 租户选择 -->
+            <t-dropdown :options="tenantMenuOptions" trigger="click" @click="handleTenantSelect">
+              <t-button variant="text" class="tenant-button">
+                {{ tenantStore.currentTenant?.name || '选择租户' }}
+                <ChevronDownIcon class="tenant-chevron" />
+              </t-button>
+            </t-dropdown>
+
+            <!-- 用户菜单 -->
+            <template v-if="!authLoading && isAuthenticated">
+              <t-dropdown :options="userMenuOptions" @click="handleUserMenuSelect">
+                <t-space align="center" size="small" class="user-trigger">
+                  <t-avatar shape="circle" size="32px">
+                    <template #icon>
+                      <UserIcon />
+                    </template>
+                  </t-avatar>
+                  <span>{{ user?.email || '用户' }}</span>
+                </t-space>
+              </t-dropdown>
+            </template>
+            <t-skeleton v-else theme="avatar" />
+          </t-space>
+        </div>
+      </t-header>
+
+      <t-content class="layout-content">
+        <div class="main-container">
+          <router-view />
+        </div>
+      </t-content>
+    </t-layout>
+  </t-layout>
 </template>
+
+<style scoped>
+.layout-aside {
+  height: 100vh;
+}
+
+.layout-aside :deep(.t-default-menu) {
+  width: 100% !important;
+}
+
+.layout-aside :deep(.t-menu) {
+  width: 100%;
+}
+
+.aside-logo {
+  font-weight: 600;
+  font-size: 18px;
+  white-space: nowrap;
+}
+
+.collapsed-logo {
+  font-weight: bold;
+  font-size: 20px;
+}
+
+.layout-header {
+  padding: 12px 24px;
+}
+
+.header-wrapper {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  width: 100%;
+}
+
+.header-actions {
+  justify-content: flex-end;
+}
+
+.user-trigger {
+  cursor: pointer;
+}
+
+.layout-content {
+  padding: 0;
+}
+
+.layout-wrapper {
+  height: 100vh;
+  overflow: hidden;
+}
+
+.tenant-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tenant-chevron {
+  margin-left: 6px;
+}
+
+.main-container {
+  max-width: 1688px;
+  margin: 0 auto;
+  padding: 24px;
+  min-height: calc(100vh - 64px);
+}
+</style>

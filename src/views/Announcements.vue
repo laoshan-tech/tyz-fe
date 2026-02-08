@@ -1,22 +1,11 @@
 <script setup lang="ts">
-import {
-  NCard,
-  NIcon,
-  NModal,
-  NSpin,
-} from 'naive-ui';
 import MarkdownRenderer from '@/components/MarkdownRenderer.vue';
 import { supabase } from '@/lib/supabase';
 import type { Announcement } from '@/types';
 import { format } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
 import { onMounted, ref } from 'vue';
-import {
-  Megaphone,
-  ArchiveOutline,
-  ChevronForward,
-  CalendarOutline,
-} from '@vicons/ionicons5';
+import { CalendarIcon } from 'tdesign-icons-vue-next';
 
 const announcements = ref<Announcement[]>([]);
 const loading = ref(false);
@@ -58,83 +47,51 @@ onMounted(() => {
 </script>
 
 <template>
-  <div style="padding: 24px;">
-    <div style="margin-bottom: 24px;">
-      <h1 style="margin: 0; font-size: 24px;">系统公告</h1>
-      <p style="margin: 4px 0 0 0; font-size: 14px; color: #999;">查看系统更新和重要通知</p>
+  <t-space direction="vertical" size="large" class="page-container">
+    <t-space direction="vertical" size="small">
+      <t-typography-title level="h1">系统公告</t-typography-title>
+      <t-typography-text theme="secondary">查看系统更新和重要通知</t-typography-text>
+    </t-space>
+
+    <div v-if="loading" class="centered-block">
+      <t-loading size="large" />
     </div>
 
-    <div v-if="loading" style="display: flex; justify-content: center; padding: 60px 0;">
-      <n-spin size="large" />
-    </div>
+    <t-empty v-else-if="announcements.length === 0" description="暂无公告" />
 
-    <div v-else-if="announcements.length === 0" style="text-align: center; padding: 60px 0; color: #ccc;">
-      <n-icon :size="32" style="margin-bottom: 16px;">
-        <ArchiveOutline />
-      </n-icon>
-      <div style="font-size: 14px;">暂无公告</div>
-    </div>
+    <t-list v-else>
+      <t-list-item v-for="announcement in announcements" :key="announcement.id" @click="showAnnouncement(announcement)">
+        <t-list-item-meta :title="announcement.title" :description="formatDateTime(announcement.created_at)" />
+      </t-list-item>
+    </t-list>
 
-    <div v-else style="display: flex; flex-direction: column; gap: 16px;">
-      <n-card
-        v-for="(announcement, index) in announcements"
-        :key="announcement.id"
-        style="cursor: pointer; transition: all 0.2s;"
-        hoverable
-        @click="showAnnouncement(announcement)"
-      >
-        <div style="display: flex; align-items: center; gap: 16px;">
-          <div
-            style="
-              width: 40px;
-              height: 40px;
-              border-radius: 12px;
-              background: #3b82f6;
-              color: #ffffff;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-            "
-          >
-            <n-icon :size="20">
-              <Megaphone />
-            </n-icon>
-          </div>
-          <div style="flex: 1;">
-            <div style="font-weight: 600;">{{ announcement.title }}</div>
-            <div style="font-size: 13px; color: #999; margin-top: 4px;">{{ formatDateTime(announcement.created_at) }}</div>
-          </div>
-          <n-icon :size="16" color="#999">
-            <ChevronForward />
-          </n-icon>
-        </div>
-      </n-card>
-    </div>
-
-    <n-modal v-model:show="dialogVisible" preset="card" :style="{ width: '800px' }">
-      <template #header>
-        {{ selectedAnnouncement?.title }}
-      </template>
+    <t-dialog v-model:visible="dialogVisible" :header="selectedAnnouncement?.title" width="800px">
       <div v-if="selectedAnnouncement">
-        <div
-          style="
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 12px;
-            color: #999;
-            padding-bottom: 12px;
-            margin-bottom: 16px;
-            border-bottom: 1px solid var(--n-border-color);
-          "
-        >
-          <n-icon :size="16">
-            <CalendarOutline />
-          </n-icon>
-          <span>{{ formatFullDateTime(selectedAnnouncement.created_at) }}</span>
-        </div>
-        <MarkdownRenderer :content="selectedAnnouncement.content" />
+        <t-space direction="vertical" size="medium">
+          <t-space align="center" size="small">
+            <CalendarIcon size="16" />
+            <span class="meta-text">{{ formatFullDateTime(selectedAnnouncement.created_at) }}</span>
+          </t-space>
+          <MarkdownRenderer :content="selectedAnnouncement.content" />
+        </t-space>
       </div>
-    </n-modal>
-  </div>
+    </t-dialog>
+  </t-space>
 </template>
+
+<style scoped>
+.page-container {
+  width: 100%;
+}
+
+.meta-text {
+  color: var(--td-text-color-secondary);
+  font-size: 12px;
+}
+
+.centered-block {
+  display: flex;
+  justify-content: center;
+  padding: 60px 0;
+}
+</style>

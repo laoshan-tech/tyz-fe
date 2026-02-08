@@ -28,6 +28,7 @@ npm run test:unit -- --run HelloWorld
 - **Quotes:** Single quotes
 - **Trailing commas:** All
 - **Semicolons:** Required
+- **Organize imports:** Enabled (auto-sorts imports)
 - Run `biome check .` to verify, `biome check --write .` to auto-fix
 
 ### Vue Components
@@ -36,10 +37,11 @@ npm run test:unit -- --run HelloWorld
 - Component props: Use `defineProps<Type>()` with TypeScript interfaces
 - Template refs: `const refName = ref<ComponentType | null>(null)`
 - Use camelCase for props in templates, kebab-case for HTML attributes
+- Use TDesign components (e.g., `t-button`, `t-form`, `t-input`)
 
 ### TypeScript
 - **Interfaces:** Define in `src/types/index.ts` for shared types
-- **Typing:** Avoid `any` - use `unknown` or specific types
+- **Typing:** Avoid `any` - use `unknown` or specific types (Biome allows `any` in some cases)
 - **Exports:** Use named exports, avoid default exports
 - **Types:** Use `type` for unions/intersections, `interface` for objects
 
@@ -55,11 +57,26 @@ npm run test:unit -- --run HelloWorld
 3. Relative imports
 4. Type imports (use `import type` when possible)
 
+**Example:**
+```typescript
+import { computed, ref } from 'vue';
+import { useRouter } from 'vue-router';
+import { MessagePlugin } from 'tdesign-vue-next';
+import { useAuth } from '@/composables/useAuth';
+import type { FormRules } from 'tdesign-vue-next';
+```
+
 ### State Management (Pinia)
 - Use setup composition API style
 - Define stores as `const useXxxStore = defineStore('xxx', () => { ... })`
 - Use `ref` for reactive state, `computed` for derived state
 - Return only necessary data/actions, keep internal state private
+
+### Composables
+- Use module-level state for singleton pattern (shared across components)
+- Return `readonly()` refs to prevent external mutations
+- Export function with `export function useXxx()`
+- Handle cleanup in `onUnmounted` if needed
 
 ### Routing (Vue Router)
 - Route definitions in `src/router/index.ts`
@@ -70,6 +87,7 @@ npm run test:unit -- --run HelloWorld
 ### Error Handling
 - Use try/catch for async operations
 - Provide user-friendly error messages (Chinese for UI, English for logs)
+- Use `MessagePlugin.error()` from TDesign for user notifications
 - Console.error for debugging, avoid console.log in production
 
 ### Async/Await
@@ -82,6 +100,13 @@ npm run test:unit -- --run HelloWorld
 - Use `@vue/test-utils` for component testing
 - Environment: jsdom
 - Follow AAA pattern: Arrange, Act, Assert
+
+### TDesign UI Guidelines
+- Use Chinese for labels, placeholders, and messages
+- Use `theme="primary"` for primary actions
+- Use `variant="text"` for secondary/icon buttons
+- Use `size="small"` for table action buttons
+- Use `MessagePlugin` for toast notifications
 
 ### Component Structure
 ```vue
@@ -113,3 +138,15 @@ npm run test:unit -- --run HelloWorld
 - `src/lib/` - Utility libraries (e.g., supabase client)
 - `src/types/` - TypeScript type definitions
 - `src/assets/` - Static assets
+
+### Supabase Integration
+- Use `@/lib/supabase` client for all Supabase operations
+- Handle auth state changes in composables
+- Use `readonly()` for user state to prevent mutations
+- Return `{ success: boolean, error?: string }` pattern for auth operations
+
+### Styling Guidelines
+- Use scoped styles in Vue components
+- Prefer TDesign's CSS variables for theming
+- Use `var(--td-text-color-secondary)` for muted text
+- Use flexbox with `justify-content: flex-end` for right-aligned actions

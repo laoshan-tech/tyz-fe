@@ -1,19 +1,8 @@
 <script setup lang="ts">
-import {
-  NButton,
-  NCheckbox,
-  NForm,
-  NFormItem,
-  NInput,
-  NInputNumber,
-  NModal,
-  NSpace,
-  type FormInst,
-  type FormRules,
-} from 'naive-ui';
 import type { RelayNode } from '@/types';
 import { useDataStore } from '@/stores/data';
 import { computed, ref, watch } from 'vue';
+import type { FormInstanceFunctions, FormRules } from 'tdesign-vue-next';
 
 const props = defineProps<{
   editData?: RelayNode | null;
@@ -26,7 +15,7 @@ const emit = defineEmits<{
 const dataStore = useDataStore();
 const visible = ref(false);
 const saving = ref(false);
-const formRef = ref<FormInst | null>(null);
+const formRef = ref<FormInstanceFunctions | null>(null);
 const isEdit = computed(() => !!props.editData);
 
 const defaultForm = {
@@ -40,17 +29,31 @@ const defaultForm = {
 };
 const formData = ref({ ...defaultForm });
 
-const rules: FormRules = {
-  name: {
-    required: true,
-    message: '请输入节点名称',
-    trigger: 'blur',
-  },
-  address: {
-    required: true,
-    message: '请输入节点地址',
-    trigger: 'blur',
-  },
+type NodeFormData = {
+  name: string;
+  address: string;
+  display_address: string;
+  level: number;
+  is_public: boolean;
+  traffic_limit: number;
+  description: string;
+};
+
+const rules: FormRules<NodeFormData> = {
+  name: [
+    {
+      required: true,
+      message: '请输入节点名称',
+      trigger: 'blur',
+    },
+  ],
+  address: [
+    {
+      required: true,
+      message: '请输入节点地址',
+      trigger: 'blur',
+    },
+  ],
 };
 
 watch(
@@ -108,52 +111,47 @@ defineExpose({
 </script>
 
 <template>
-  <n-modal v-model:show="visible" preset="card" :style="{ width: '500px' }">
-    <template #header>
-      {{ isEdit ? '编辑节点' : '新建节点' }}
-    </template>
+  <t-dialog v-model:visible="visible" :header="isEdit ? '编辑节点' : '新建节点'" width="500px">
+    <t-form ref="formRef" :data="formData" :rules="rules">
+      <t-form-item label="名称" name="name">
+        <t-input v-model="formData.name" placeholder="请输入节点名称" />
+      </t-form-item>
 
-    <n-form ref="formRef" :model="formData" :rules="rules">
-      <n-form-item label="名称" path="name">
-        <n-input v-model:value="formData.name" placeholder="请输入节点名称" />
-      </n-form-item>
+      <t-form-item label="地址" name="address">
+        <t-input v-model="formData.address" placeholder="例如: 192.168.1.1:8080" />
+      </t-form-item>
 
-      <n-form-item label="地址" path="address">
-        <n-input v-model:value="formData.address" placeholder="例如: 192.168.1.1:8080" />
-      </n-form-item>
+      <t-form-item label="显示地址" name="display_address">
+        <t-input v-model="formData.display_address" placeholder="对外显示的地址（可选）" />
+      </t-form-item>
 
-      <n-form-item label="显示地址" path="display_address">
-        <n-input v-model:value="formData.display_address" placeholder="对外显示的地址（可选）" />
-      </n-form-item>
+      <t-space :size="16">
+        <t-form-item label="级别" name="level">
+          <t-input-number v-model="formData.level" :min="0" :max="10" />
+        </t-form-item>
+        <t-form-item label="流量限制" name="traffic_limit">
+          <t-input-number v-model="formData.traffic_limit" placeholder="-1 表示无限制" />
+        </t-form-item>
+      </t-space>
 
-      <n-space :size="16">
-        <n-form-item label="级别" path="level">
-          <n-input-number v-model:value="formData.level" :min="0" :max="10" />
-        </n-form-item>
-        <n-form-item label="流量限制" path="traffic_limit">
-          <n-input-number v-model:value="formData.traffic_limit" placeholder="-1 表示无限制" />
-        </n-form-item>
-      </n-space>
+      <t-form-item label="公开节点" name="is_public">
+        <t-checkbox v-model="formData.is_public" />
+      </t-form-item>
 
-      <n-form-item label="公开节点" path="is_public">
-        <n-checkbox v-model:checked="formData.is_public" />
-      </n-form-item>
-
-      <n-form-item label="描述" path="description">
-        <n-input
-          v-model:value="formData.description"
-          type="textarea"
-          :rows="3"
+      <t-form-item label="描述" name="description">
+        <t-textarea
+          v-model="formData.description"
+          :autosize="{ minRows: 3, maxRows: 5 }"
           placeholder="节点描述信息（可选）"
         />
-      </n-form-item>
-    </n-form>
+      </t-form-item>
+    </t-form>
 
     <template #footer>
-      <n-space justify="end">
-        <n-button @click="close">取消</n-button>
-        <n-button type="primary" :loading="saving" @click="save">{{ isEdit ? '保存' : '创建' }}</n-button>
-      </n-space>
+      <t-space align="center" justify="flex-end">
+        <t-button @click="close">取消</t-button>
+        <t-button theme="primary" :loading="saving" @click="save">{{ isEdit ? '保存' : '创建' }}</t-button>
+      </t-space>
     </template>
-  </n-modal>
+  </t-dialog>
 </template>

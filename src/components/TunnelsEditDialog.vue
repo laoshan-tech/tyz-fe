@@ -1,24 +1,5 @@
 <script setup lang="ts">
 import {
-  NAlert,
-  NButton,
-  NCollapse,
-  NCollapseItem,
-  NForm,
-  NFormItem,
-  NInput,
-  NModal,
-  NRadio,
-  NRadioGroup,
-  NSelect,
-  NSpace,
-  NSpin,
-  NStep,
-  NSteps,
-  type FormInst,
-  type FormRules,
-} from 'naive-ui';
-import {
   createMultiNodeChains,
   createSingleNodeChain,
   updateMultiNodeChains,
@@ -28,7 +9,8 @@ import {
 import { supabase } from '@/lib/supabase';
 import type { RelayNode, Tunnel } from '@/types';
 import { computed, h, ref, watch } from 'vue';
-import { Add, TrashOutline } from '@vicons/ionicons5';
+import { AddIcon, DeleteIcon } from 'tdesign-icons-vue-next';
+import type { FormInstanceFunctions, FormRules } from 'tdesign-vue-next';
 
 const props = defineProps<{
   editData?: Tunnel | null;
@@ -44,7 +26,7 @@ const currentStep = ref(1);
 const chainError = ref('');
 const validationErrors = ref<Record<string, string>>({});
 const visible = ref(false);
-const formRef = ref<FormInst | null>(null);
+const formRef = ref<FormInstanceFunctions | null>(null);
 
 const isEdit = computed(() => !!props.editData);
 
@@ -62,20 +44,26 @@ const defaultForm = {
 const formData = ref({ ...defaultForm });
 const availableNodes = ref<RelayNode[]>([]);
 
-const rules: FormRules = {
-  name: {
-    required: true,
-    message: '请输入隧道名称',
-    trigger: 'blur',
-  },
+type TunnelFormData = {
+  name: string;
+  description: string;
+  ingress_display_address: string;
+  mode: 'single' | 'multi';
+  singleNodeId: number | null;
+  ingressNodeId: number | null;
+  chainNodes: ChainNode[];
+  egressNodeId: number | null;
 };
 
-function renderNodeOption(option: { name: string; address: string }) {
-  return h('div', { style: 'display: flex; flex-direction: column; gap: 2px; padding: 4px 0;' }, [
-    h('div', { style: 'font-size: 13px; font-weight: 600;' }, option.name),
-    h('div', { style: 'font-size: 12px; color: #999;' }, option.address),
-  ]);
-}
+const rules: FormRules<TunnelFormData> = {
+  name: [
+    {
+      required: true,
+      message: '请输入隧道名称',
+      trigger: 'blur',
+    },
+  ],
+};
 
 function initializeForm() {
   const editData = props.editData;
@@ -308,138 +296,148 @@ async function save() {
 }
 
 defineExpose({ open });
+
+function renderNodeOption(h: any, node: RelayNode) {
+  return h('div', { class: 'node-option' }, [
+    h('div', { class: 'node-name' }, node.name),
+    h('div', { class: 'node-address' }, node.address),
+  ]);
+}
 </script>
 
 <template>
-  <n-modal v-model:show="visible" :style="{ width: '700px' }" preset="card">
-    <template #header>
-      {{ isEdit ? '编辑隧道' : '新建隧道' }}
-    </template>
-
-    <n-steps :current="currentStep" style="margin-bottom: 24px;">
-      <n-step title="基本信息" />
-      <n-step title="链路配置" />
-    </n-steps>
+  <t-dialog v-model:visible="visible" :header="isEdit ? '编辑隧道' : '新建隧道'" width="700px">
+    <t-steps :current="currentStep" class="steps-wrapper">
+      <t-step-item title="基本信息" />
+      <t-step-item title="链路配置" />
+    </t-steps>
 
     <!-- Step 1: Basic Info -->
     <div v-show="currentStep === 1">
-      <n-form ref="formRef" :model="formData" :rules="rules">
-        <n-form-item label="名称" path="name">
-          <n-input v-model:value="formData.name" placeholder="请输入隧道名称" />
-        </n-form-item>
+      <t-form ref="formRef" :data="formData" :rules="rules">
+        <t-form-item label="名称" name="name">
+          <t-input v-model="formData.name" placeholder="请输入隧道名称" />
+        </t-form-item>
 
-        <n-form-item label="描述" path="description">
-          <n-input v-model:value="formData.description" type="textarea" :rows="3" placeholder="请输入描述" />
-        </n-form-item>
+        <t-form-item label="描述" name="description">
+          <t-textarea v-model="formData.description" :autosize="{ minRows: 3, maxRows: 6 }" placeholder="请输入描述" />
+        </t-form-item>
 
-        <n-form-item label="入口显示地址" path="ingress_display_address">
-          <n-input v-model:value="formData.ingress_display_address" placeholder="例如: 1.2.3.4:8080" />
-        </n-form-item>
+        <t-form-item label="入口显示地址" name="ingress_display_address">
+          <t-input v-model="formData.ingress_display_address" placeholder="例如: 1.2.3.4:8080" />
+        </t-form-item>
 
-        <n-form-item label="节点模式" path="mode">
-          <n-radio-group v-model:value="formData.mode" name="mode">
-            <n-space vertical :size="12">
-              <n-radio value="single">单节点（入口和出口相同）</n-radio>
-              <n-radio value="multi">多节点（可配置中继链）</n-radio>
-            </n-space>
-          </n-radio-group>
-        </n-form-item>
-      </n-form>
+        <t-form-item label="节点模式" name="mode">
+          <t-radio-group v-model="formData.mode">
+            <t-space direction="vertical" :size="12">
+              <t-radio value="single">单节点（入口和出口相同）</t-radio>
+              <t-radio value="multi">多节点（可配置中继链）</t-radio>
+            </t-space>
+          </t-radio-group>
+        </t-form-item>
+      </t-form>
 
-      <div style="display: flex; justify-content: flex-end;">
-        <n-button type="primary" @click="goToStep2">下一步</n-button>
-      </div>
+      <t-space class="step-actions" justify="flex-end">
+        <t-button theme="primary" @click="goToStep2">下一步</t-button>
+      </t-space>
     </div>
 
     <!-- Step 2: Chain Config -->
     <div v-show="currentStep === 2">
-      <div v-if="loadingNodes" style="display: flex; flex-direction: column; align-items: center; padding: 32px 0;">
-        <n-spin size="large" />
-        <p style="margin: 16px 0 0; font-size: 13px; color: #999;">加载节点...</p>
+      <div v-if="loadingNodes" class="loading-wrapper">
+        <t-loading size="large" />
+        <p class="loading-text">加载节点...</p>
       </div>
 
       <template v-else>
         <!-- Single Node Mode -->
         <template v-if="formData.mode === 'single'">
-          <n-form-item label="选择节点">
-            <n-select
-              v-model:value="formData.singleNodeId"
+          <t-form-item label="选择节点">
+            <t-select
+              v-model="formData.singleNodeId"
               :options="availableNodes"
-              label-field="name"
-              value-field="id"
+              label-key="name"
+              value-key="id"
               placeholder="选择节点（同时作为入口和出口）"
               :status="validationErrors.singleNodeId ? 'error' : undefined"
-              :render-label="renderNodeOption"
-            />
-          </n-form-item>
-          <n-alert v-if="validationErrors.singleNodeId" type="error" :show-icon="false" style="margin-bottom: 12px;">
+              :value="formData.singleNodeId"
+            >
+              <t-option v-for="node in availableNodes" :key="node.id" :value="node.id" :label="node.name">
+                <component :is="() => renderNodeOption(h, node)" />
+              </t-option>
+            </t-select>
+          </t-form-item>
+          <t-alert v-if="validationErrors.singleNodeId" theme="error" class="validation-alert">
             {{ validationErrors.singleNodeId }}
-          </n-alert>
-          <n-alert type="info" style="margin-bottom: 16px;">
+          </t-alert>
+          <t-alert theme="info" class="info-alert">
             单节点模式：流量直接从入口转发到出口，适用于在同一节点上建立隧道
-          </n-alert>
+          </t-alert>
         </template>
 
         <!-- Multi Node Mode -->
         <template v-else>
-          <n-form-item label="入口节点">
-            <n-select
-              v-model:value="formData.ingressNodeId"
+          <t-form-item label="入口节点">
+            <t-select
+              v-model="formData.ingressNodeId"
               :options="availableNodes"
-              label-field="name"
-              value-field="id"
+              label-key="name"
+              value-key="id"
               placeholder="选择入口节点"
               :status="validationErrors.ingressNodeId ? 'error' : undefined"
-              :render-label="renderNodeOption"
-            />
-          </n-form-item>
-          <n-alert
-            v-if="validationErrors.ingressNodeId"
-            type="error"
-            :show-icon="false"
-            style="margin-bottom: 12px;"
-          >
+              :value="formData.ingressNodeId"
+            >
+              <t-option v-for="node in availableNodes" :key="node.id" :value="node.id" :label="node.name">
+                <component :is="() => renderNodeOption(h, node)" />
+              </t-option>
+            </t-select>
+          </t-form-item>
+          <t-alert v-if="validationErrors.ingressNodeId" theme="error" class="validation-alert">
             {{ validationErrors.ingressNodeId }}
-          </n-alert>
+          </t-alert>
 
           <!-- Chain Nodes -->
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-            <span style="font-weight: 500;">中继链配置</span>
-            <n-button quaternary size="small" @click="addChainNode">
+          <div class="chain-header">
+            <span class="chain-title">中继链配置</span>
+            <t-button variant="text" size="small" @click="addChainNode">
               <template #icon>
-                <Add style="font-size: 14px;" />
+                <AddIcon />
               </template>
               添加中继跳
-            </n-button>
+            </t-button>
           </div>
 
-          <n-collapse v-if="formData.chainNodes.length > 0" style="margin-bottom: 16px;">
-            <n-collapse-item v-for="(node, index) in formData.chainNodes" :key="index" :name="String(index)">
+          <t-collapse v-if="formData.chainNodes.length > 0" class="chain-collapse">
+            <t-collapse-panel v-for="(node, index) in formData.chainNodes" :key="index" :value="String(index)">
               <template #header>
-                <div style="display: flex; align-items: center; gap: 8px;">
-                  <span style="font-weight: 500;">第 {{ index + 1 }} 跳</span>
-                  <n-button quaternary type="error" size="small" @click.stop="removeChainNode(index)">
+                <div class="chain-panel-header">
+                  <span class="chain-panel-title">第 {{ index + 1 }} 跳</span>
+                  <t-button variant="text" theme="danger" size="small" @click.stop="removeChainNode(index)">
                     <template #icon>
-                      <TrashOutline style="font-size: 14px;" />
+                      <DeleteIcon />
                     </template>
-                  </n-button>
+                  </t-button>
                 </div>
               </template>
-              <div style="padding: 16px; border-radius: 8px; background: rgba(148, 163, 184, 0.08);">
-                <n-form-item label="选择节点">
-                  <n-select
-                    v-model:value="node.nodeId"
+              <div class="chain-panel-content">
+                <t-form-item label="选择节点">
+                  <t-select
+                    v-model="node.nodeId"
                     :options="availableNodes"
-                    label-field="name"
-                    value-field="id"
+                    label-key="name"
+                    value-key="id"
                     placeholder="选择节点"
-                    :render-label="renderNodeOption"
-                  />
-                </n-form-item>
-                <n-space :size="12">
-                  <n-form-item label="负载策略">
-                    <n-select
-                      v-model:value="node.strategy"
+                    :value="node.nodeId"
+                  >
+                    <t-option v-for="option in availableNodes" :key="option.id" :value="option.id" :label="option.name">
+                      <component :is="() => renderNodeOption(h, option)" />
+                    </t-option>
+                  </t-select>
+                </t-form-item>
+                <t-space :size="12">
+                  <t-form-item label="负载策略">
+                    <t-select
+                      v-model="node.strategy"
                       :options="[
                         { label: 'round', value: 'round' },
                         { label: 'random', value: 'random' },
@@ -447,12 +445,12 @@ defineExpose({ open });
                         { label: 'least', value: 'least' },
                       ]"
                       placeholder="选择策略"
-                      style="min-width: 140px;"
+                      class="strategy-select"
                     />
-                  </n-form-item>
-                  <n-form-item label="传输协议">
-                    <n-select
-                      v-model:value="node.transport"
+                  </t-form-item>
+                  <t-form-item label="传输协议">
+                    <t-select
+                      v-model="node.transport"
                       :options="[
                         { label: 'raw', value: 'raw' },
                         { label: 'ws', value: 'ws' },
@@ -463,51 +461,138 @@ defineExpose({ open });
                         { label: 'mwss', value: 'mwss' },
                       ]"
                       placeholder="选择协议"
-                      style="min-width: 140px;"
+                      class="transport-select"
                     />
-                  </n-form-item>
-                </n-space>
+                  </t-form-item>
+                </t-space>
               </div>
-            </n-collapse-item>
-          </n-collapse>
+            </t-collapse-panel>
+          </t-collapse>
 
-          <n-alert v-else type="info" style="margin-bottom: 16px;">
+          <t-alert v-else theme="info" class="info-alert">
             未配置中继链，流量将直接从入口转发到出口
-          </n-alert>
+          </t-alert>
 
           <!-- Egress Node -->
-          <n-form-item label="出口节点">
-            <n-select
-              v-model:value="formData.egressNodeId"
+          <t-form-item label="出口节点">
+            <t-select
+              v-model="formData.egressNodeId"
               :options="availableNodes"
-              label-field="name"
-              value-field="id"
+              label-key="name"
+              value-key="id"
               placeholder="选择出口节点"
               :status="validationErrors.egressNodeId ? 'error' : undefined"
-              :render-label="renderNodeOption"
-            />
-          </n-form-item>
-          <n-alert
-            v-if="validationErrors.egressNodeId"
-            type="error"
-            :show-icon="false"
-            style="margin-bottom: 12px;"
-          >
+              :value="formData.egressNodeId"
+            >
+              <t-option v-for="node in availableNodes" :key="node.id" :value="node.id" :label="node.name">
+                <component :is="() => renderNodeOption(h, node)" />
+              </t-option>
+            </t-select>
+          </t-form-item>
+          <t-alert v-if="validationErrors.egressNodeId" theme="error" class="validation-alert">
             {{ validationErrors.egressNodeId }}
-          </n-alert>
+          </t-alert>
         </template>
 
-        <n-alert v-if="chainError" type="error" style="margin-bottom: 16px;">
+        <t-alert v-if="chainError" theme="error" class="error-alert">
           {{ chainError }}
-        </n-alert>
+        </t-alert>
       </template>
 
-      <div style="display: flex; justify-content: space-between; margin-top: 16px;">
-        <n-button quaternary @click="goToStep1">上一步</n-button>
-        <n-button type="primary" :loading="saving" :disabled="loadingNodes" @click="save">
+      <t-space class="step-actions" justify="space-between">
+        <t-button variant="text" @click="goToStep1">上一步</t-button>
+        <t-button theme="primary" :loading="saving" :disabled="loadingNodes" @click="save">
           {{ isEdit ? '保存' : '创建' }}
-        </n-button>
-      </div>
+        </t-button>
+      </t-space>
     </div>
-  </n-modal>
+  </t-dialog>
 </template>
+
+<style scoped>
+.steps-wrapper {
+  margin-bottom: 24px;
+}
+
+.step-actions {
+  margin-top: 16px;
+}
+
+.loading-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 32px 0;
+}
+
+.loading-text {
+  margin: 16px 0 0;
+  font-size: 13px;
+  color: var(--td-text-color-secondary);
+}
+
+.validation-alert {
+  margin-bottom: 12px;
+}
+
+.info-alert {
+  margin-bottom: 16px;
+}
+
+.error-alert {
+  margin-bottom: 16px;
+}
+
+.chain-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.chain-title {
+  font-weight: 500;
+}
+
+.chain-collapse {
+  margin-bottom: 16px;
+}
+
+.chain-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.chain-panel-title {
+  font-weight: 500;
+}
+
+.chain-panel-content {
+  padding: 16px;
+  border-radius: 8px;
+  background: rgba(148, 163, 184, 0.08);
+}
+
+.strategy-select,
+.transport-select {
+  min-width: 140px;
+}
+
+.node-option {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 0;
+}
+
+.node-name {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.node-address {
+  font-size: 12px;
+  color: var(--td-text-color-secondary);
+}
+</style>

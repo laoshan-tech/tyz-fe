@@ -2,13 +2,11 @@
 import type { Chain } from '@/types';
 import { computed, ref } from 'vue';
 import {
-  NButton,
-  NCard,
-  NModal,
-  NSpace,
-  NTag,
-} from 'naive-ui';
-import { LogIn, LogOut, ArrowForward, InformationCircle } from '@vicons/ionicons5';
+  ArrowRightIcon,
+  ErrorCircleIcon,
+  LoginIcon,
+  LogoutIcon,
+} from 'tdesign-icons-vue-next';
 
 const props = defineProps<{
   chains?: Chain[];
@@ -36,11 +34,11 @@ function close() {
 
 function getIcon(type: string) {
   const icons: Record<string, unknown> = {
-    in: LogIn,
-    chain: ArrowForward,
-    out: LogOut,
+    in: LoginIcon,
+    chain: ArrowRightIcon,
+    out: LogoutIcon,
   };
-  return icons[type] || InformationCircle;
+  return icons[type] || ErrorCircleIcon;
 }
 
 function getTypeLabel(type: string): string {
@@ -48,92 +46,158 @@ function getTypeLabel(type: string): string {
   return labels[type] || '未知';
 }
 
-function getTypeSeverity(type: string): 'info' | 'success' | 'warning' {
-  const severities: Record<string, 'info' | 'success' | 'warning'> = {
+function getTypeSeverity(type: string): 'primary' | 'success' | 'warning' {
+  const severities: Record<string, 'primary' | 'success' | 'warning'> = {
     in: 'success',
-    chain: 'info',
+    chain: 'primary',
     out: 'warning',
   };
-  return severities[type] || 'info';
+  return severities[type] || 'primary';
+}
+
+function getIconBackground(type: string): string {
+  const colors: Record<string, string> = {
+    in: 'var(--td-success-color)',
+    out: 'var(--td-warning-color)',
+    chain: 'var(--td-brand-color)',
+  };
+  return colors[type] || 'var(--td-brand-color)';
 }
 
 defineExpose({ open });
 </script>
 
 <template>
-  <n-modal v-model:show="visible" preset="card" :style="{ width: '600px' }">
-    <template #header>
-      链路详情
-    </template>
+  <t-dialog v-model:visible="visible" header="链路详情" width="600px">
 
-    <div v-if="!chains || chains.length === 0" style="text-align: center; padding: 40px 0; color: #999;">
-      <InformationCircle style="font-size: 64px; margin-bottom: 16px;" />
-      <div style="font-size: 14px;">暂无链路配置</div>
-    </div>
+    <t-empty v-if="!chains || chains.length === 0" description="暂无链路配置">
+      <template #icon>
+        <ErrorCircleIcon />
+      </template>
+    </t-empty>
 
-    <div v-else style="display: flex; flex-direction: column; gap: 12px;">
-      <div v-for="(chain, index) in sortedChains" :key="chain.id || index" style="display: flex; gap: 12px;">
-        <div style="width: 44px; display: flex; flex-direction: column; align-items: center;">
+    <t-space v-else direction="vertical" :size="12" class="chain-list">
+      <div v-for="(chain, index) in sortedChains" :key="chain.id || index" class="chain-item">
+        <div class="chain-icon-column">
           <div
-            :style="{
-              width: '40px',
-              height: '40px',
-              borderRadius: '50%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#fff',
-              background: chain.chain_type === 'in' ? '#22c55e' : chain.chain_type === 'out' ? '#f59e0b' : '#3b82f6',
-            }"
+            class="chain-icon"
+            :style="{ background: getIconBackground(chain.chain_type) }"
           >
-            <component :is="getIcon(chain.chain_type)" style="font-size: 20px;" />
+            <component :is="getIcon(chain.chain_type)" class="chain-icon-svg" />
           </div>
           <div
             v-if="index < sortedChains.length - 1"
-            style="flex: 1; width: 2px; margin: 8px 0; background: var(--n-border-color);"
+            class="chain-connector"
           />
         </div>
 
-        <n-card :bordered="true" style="flex: 1;">
+        <t-card class="chain-card">
           <template #header>
-            <div style="display: flex; align-items: center; gap: 8px;">
-              <n-tag :type="getTypeSeverity(chain.chain_type)">
+            <t-space align="center" :size="8">
+              <t-tag :theme="getTypeSeverity(chain.chain_type)">
                 {{ getTypeLabel(chain.chain_type) }}
-              </n-tag>
-              <span v-if="chain.chain_type === 'chain'" style="font-size: 13px; color: #999;">
+              </t-tag>
+              <span v-if="chain.chain_type === 'chain'" class="chain-index">
                 第{{ chain.index }}跳
               </span>
-            </div>
+            </t-space>
           </template>
-          <div style="display: flex; flex-direction: column; gap: 8px;">
-            <div style="display: flex; justify-content: space-between;">
-              <span style="font-size: 13px; color: #999;">节点</span>
-              <span style="font-weight: 600;">{{ chain.node?.name || '未知节点' }}</span>
-            </div>
-            <div style="font-size: 13px; color: #666; font-family: monospace;">
+          <t-space direction="vertical" :size="8">
+            <t-space align="center" justify="space-between" class="info-row">
+              <span class="info-label">节点</span>
+              <span class="info-value">{{ chain.node?.name || '未知节点' }}</span>
+            </t-space>
+            <div class="node-address">
               {{ chain.node?.address || '-' }}
             </div>
-            <div style="display: flex; justify-content: space-between;">
-              <span style="font-size: 13px; color: #999;">端口</span>
-              <span style="font-weight: 600;">{{ chain.port || '-' }}</span>
-            </div>
-            <div style="display: flex; justify-content: space-between;">
-              <span style="font-size: 13px; color: #999;">协议</span>
-              <span style="font-weight: 600;">{{ chain.transport }}</span>
-            </div>
-            <div v-if="chain.strategy" style="display: flex; align-items: center; gap: 8px;">
-              <span style="font-size: 13px; color: #999;">策略</span>
-              <n-tag type="info">{{ chain.strategy }}</n-tag>
-            </div>
-          </div>
-        </n-card>
+            <t-space align="center" justify="space-between" class="info-row">
+              <span class="info-label">端口</span>
+              <span class="info-value">{{ chain.port || '-' }}</span>
+            </t-space>
+            <t-space align="center" justify="space-between" class="info-row">
+              <span class="info-label">协议</span>
+              <span class="info-value">{{ chain.transport }}</span>
+            </t-space>
+            <t-space v-if="chain.strategy" align="center" :size="8">
+              <span class="info-label">策略</span>
+              <t-tag theme="primary">{{ chain.strategy }}</t-tag>
+            </t-space>
+          </t-space>
+        </t-card>
       </div>
-    </div>
+    </t-space>
 
     <template #footer>
-      <n-space justify="end">
-        <n-button @click="close">关闭</n-button>
-      </n-space>
+      <t-space align="center" justify="flex-end">
+        <t-button @click="close">关闭</t-button>
+      </t-space>
     </template>
-  </n-modal>
+  </t-dialog>
 </template>
+
+<style scoped>
+.chain-list {
+  width: 100%;
+}
+
+.chain-item {
+  display: flex;
+  gap: 12px;
+}
+
+.chain-icon-column {
+  width: 44px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.chain-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+}
+
+.chain-icon-svg {
+  font-size: 20px;
+}
+
+.chain-connector {
+  flex: 1;
+  width: 2px;
+  margin: 8px 0;
+  background: var(--td-border-level-1-color);
+}
+
+.chain-card {
+  flex: 1;
+}
+
+.chain-index {
+  font-size: 13px;
+  color: var(--td-text-color-secondary);
+}
+
+.info-row {
+  width: 100%;
+}
+
+.info-label {
+  font-size: 13px;
+  color: var(--td-text-color-secondary);
+}
+
+.info-value {
+  font-weight: 600;
+}
+
+.node-address {
+  font-size: 13px;
+  color: var(--td-text-color-placeholder);
+  font-family: monospace;
+}
+</style>

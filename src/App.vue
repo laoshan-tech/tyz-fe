@@ -1,9 +1,17 @@
 <script setup lang="ts">
-import { NConfigProvider, NMessageProvider, darkTheme } from 'naive-ui';
-import { ref, provide, computed } from 'vue';
+import { computed, provide, ref, watch } from 'vue';
+import zhCN from 'tdesign-vue-next/es/locale/zh_CN';
 
 const isDark = ref(false);
-const theme = computed(() => isDark.value ? darkTheme : null);
+const themeMode = computed(() => (isDark.value ? 'dark' : 'light'));
+const globalConfig = computed(() => ({
+  ...zhCN,
+  classPrefix: 't',
+  table: {
+    stripe: true,
+    size: 'medium',
+  },
+}));
 
 function toggleTheme() {
   isDark.value = !isDark.value;
@@ -11,12 +19,18 @@ function toggleTheme() {
 
 provide('isDark', isDark);
 provide('toggleTheme', toggleTheme);
+
+watch(
+  isDark,
+  (value) => {
+    document.documentElement.setAttribute('theme-mode', value ? 'dark' : 'light');
+  },
+  { immediate: true },
+);
 </script>
 
 <template>
-  <n-config-provider :theme="theme">
-    <n-message-provider>
-      <RouterView />
-    </n-message-provider>
-  </n-config-provider>
+  <t-config-provider :global-config="globalConfig">
+    <RouterView />
+  </t-config-provider>
 </template>

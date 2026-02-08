@@ -2,26 +2,17 @@
 import { supabase } from '@/lib/supabase';
 import MarkdownRenderer from '@/components/MarkdownRenderer.vue';
 import type { Announcement } from '@/types';
-import {
-  NButton,
-  NCard,
-  NModal,
-  NSkeleton,
-  NStatistic,
-  NList,
-  NListItem,
-  NThing,
-  NEmpty,
-} from 'naive-ui';
 import { format } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
 import { computed, onMounted, ref } from 'vue';
-import { Icon } from '@vicons/utils';
-import { Desktop, ArrowForward, GitBranch, Megaphone, Refresh } from '@vicons/ionicons5';
+import {
+  ArrowRightIcon,
+  RelationIcon,
+  ServerIcon,
+} from 'tdesign-icons-vue-next';
 
 const stats = ref({ nodes: 0, tunnels: 0, rules: 0 });
 const statsLoading = ref(true);
-const loading = ref(false);
 const announcements = ref<Announcement[]>([]);
 const announcementsLoading = ref(true);
 const dialogVisible = ref(false);
@@ -32,9 +23,9 @@ const currentDate = computed(() =>
 );
 
 const statsList = computed(() => [
-  { key: 'nodes', label: '中继节点', value: stats.value.nodes, icon: Desktop },
-  { key: 'tunnels', label: '隧道数量', value: stats.value.tunnels, icon: ArrowForward },
-  { key: 'rules', label: '转发规则', value: stats.value.rules, icon: GitBranch },
+  { key: 'nodes', label: '中继节点', value: stats.value.nodes, icon: ServerIcon },
+  { key: 'tunnels', label: '隧道数量', value: stats.value.tunnels, icon: ArrowRightIcon },
+  { key: 'rules', label: '转发规则', value: stats.value.rules, icon: RelationIcon },
 ]);
 
 function formatDateTime(date: string): string {
@@ -87,12 +78,6 @@ async function fetchAnnouncements() {
   }
 }
 
-async function refreshData() {
-  loading.value = true;
-  await Promise.all([fetchStats(), fetchAnnouncements()]);
-  loading.value = false;
-}
-
 onMounted(() => {
   fetchStats();
   fetchAnnouncements();
@@ -100,96 +85,59 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="dashboard-container">
-    <div class="page-header">
-      <div>
-        <h1 style="margin: 0; font-size: 24px;">欢迎回来</h1>
-        <p style="margin: 4px 0 0 0; font-size: 14px; color: #999;">{{ currentDate }}</p>
-      </div>
-      <n-button quaternary circle @click="refreshData" :loading="loading">
-        <template #icon>
-          <Icon size="20">
-            <Refresh />
-          </Icon>
-        </template>
-      </n-button>
-    </div>
+    <t-space direction="vertical" size="large" class="dashboard-container">
+      <t-space direction="vertical" size="small">
+        <t-typography-title level="h1">欢迎回来</t-typography-title>
+        <t-typography-text theme="secondary">{{ currentDate }}</t-typography-text>
+      </t-space>
 
-    <div class="stats-grid">
-      <n-card v-for="stat in statsList" :key="stat.key">
+    <t-row :gutter="16">
+      <t-col v-for="stat in statsList" :key="stat.key" :xs="12" :md="4">
+        <t-card>
         <div v-if="statsLoading">
-          <n-skeleton text :repeat="2" />
+          <t-skeleton :row-col="[1]" />
         </div>
-        <n-statistic v-else :label="stat.label">
+        <t-statistic v-else :title="stat.label" :value="stat.value">
           <template #prefix>
-            <Icon size="16">
-              <component :is="stat.icon" />
-            </Icon>
+            <component :is="stat.icon" />
           </template>
-          {{ stat.value }}
-        </n-statistic>
-      </n-card>
-    </div>
+        </t-statistic>
+        </t-card>
+      </t-col>
+    </t-row>
 
-    <n-card title="最新公告">
+    <t-card title="最新公告">
       <div v-if="announcementsLoading">
-        <n-skeleton text :repeat="3" />
+        <t-skeleton :row-col="[{ width: '80%' }, { width: '70%' }, { width: '60%' }]" />
       </div>
 
-      <n-empty v-else-if="announcements.length === 0" description="暂无公告" />
+      <t-empty v-else-if="announcements.length === 0" description="暂无公告" />
 
-      <n-list v-else hoverable clickable>
-        <n-list-item
-          v-for="announcement in announcements"
-          :key="announcement.id"
-          @click="showAnnouncement(announcement)"
-        >
-          <n-thing
-            :title="announcement.title"
-            :description="formatDateTime(announcement.created_at)"
-          >
-            <template #avatar>
-              <Icon size="20" style="color: #2080f0">
-                <Megaphone />
-              </Icon>
-            </template>
-          </n-thing>
-        </n-list-item>
-      </n-list>
-    </n-card>
+      <t-list v-else>
+        <t-list-item v-for="announcement in announcements" :key="announcement.id" @click="showAnnouncement(announcement)">
+          <t-list-item-meta :title="announcement.title" :description="formatDateTime(announcement.created_at)" />
+        </t-list-item>
+      </t-list>
+    </t-card>
 
-    <n-modal
-      v-model:show="dialogVisible"
-      preset="card"
-      :title="selectedAnnouncement?.title"
-      style="width: 600px; max-width: 90vw"
-    >
+    <t-dialog v-model:visible="dialogVisible" :header="selectedAnnouncement?.title" width="600px">
       <div v-if="selectedAnnouncement">
-        <p style="color: #666; font-size: 12px; margin-bottom: 16px">
-          {{ formatFullDateTime(selectedAnnouncement.created_at) }}
-        </p>
-        <MarkdownRenderer :content="selectedAnnouncement.content" />
+        <t-space direction="vertical" size="medium">
+          <span class="meta-text">{{ formatFullDateTime(selectedAnnouncement.created_at) }}</span>
+          <MarkdownRenderer :content="selectedAnnouncement.content" />
+        </t-space>
       </div>
-    </n-modal>
-  </div>
+    </t-dialog>
+    </t-space>
 </template>
 
 <style scoped>
 .dashboard-container {
-  padding: 24px;
+  width: 100%;
 }
 
-.page-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 24px;
-}
-
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 16px;
-  margin-bottom: 24px;
+.meta-text {
+  color: var(--td-text-color-secondary);
+  font-size: 12px;
 }
 </style>

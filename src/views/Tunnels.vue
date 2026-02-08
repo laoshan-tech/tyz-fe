@@ -1,14 +1,4 @@
 <script setup lang="ts">
-import {
-  NButton,
-  NCard,
-  NDataTable,
-  NModal,
-  NSpace,
-  NTag,
-  type DataTableColumns,
-  type DataTableRowKey,
-} from 'naive-ui';
 import TunnelsEditDialog from '@/components/TunnelsEditDialog.vue';
 import TunnelChainDialog from '@/components/TunnelChainDialog.vue';
 import { supabase } from '@/lib/supabase';
@@ -17,13 +7,14 @@ import { format } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
 import { h, onMounted, ref, computed } from 'vue';
 import {
-  Add,
-  Create,
-  TrashOutline,
-  ArrowUp,
-  ArrowForward,
-  WarningOutline,
-} from '@vicons/ionicons5';
+  AddIcon,
+  ArrowRightIcon,
+  DeleteIcon,
+  EditIcon,
+  ErrorTriangleIcon,
+  ArrowUpIcon,
+} from 'tdesign-icons-vue-next';
+import type { PrimaryTableCol, TableRowData } from 'tdesign-vue-next';
 
 const tunnels = ref<Tunnel[]>([]);
 const loading = ref(false);
@@ -38,65 +29,65 @@ const editDialogRef = ref<InstanceType<typeof TunnelsEditDialog> | null>(null);
 const chainDialogRef = ref<InstanceType<typeof TunnelChainDialog> | null>(null);
 const editData = ref<Tunnel | null>(null);
 
-const columns = computed<DataTableColumns<Tunnel>>(() => [
-  { title: 'ID', key: 'id', width: 80, sorter: 'default' },
-  { title: '名称', key: 'name', sorter: 'default' },
+const columns = computed<PrimaryTableCol<TableRowData>[]>(() => [
+  { title: 'ID', colKey: 'id', width: 90, sorter: true },
+  { title: '名称', colKey: 'name', width: 200, sorter: true },
   {
     title: '链路配置',
-    key: 'chains',
-    render: (row) => {
-      const summary = getChainSummary(row);
+    colKey: 'chains',
+    cell: (h, { row }) => {
+      const summary = getChainSummary(row as Tunnel);
       if (summary) {
-        return h(NTag, { type: 'info' }, { default: () => summary });
+        return h('t-tag', { theme: 'primary' }, { default: () => summary });
       }
-      return h('span', { style: 'font-size: 13px; color: #999;' }, '-');
+      return h('span', { class: 'cell-muted' }, '-');
     },
   },
   {
     title: '创建时间',
-    key: 'created_at',
-    width: 180,
-    sorter: 'default',
-    render: (row) => {
-      return h('span', { style: 'font-size: 13px; color: #999;' }, formatDateTime(row.created_at));
+    colKey: 'created_at',
+    width: 200,
+    sorter: true,
+    cell: (h, { row }) => {
+      return h('span', { class: 'cell-muted' }, formatDateTime((row as Tunnel).created_at));
     },
   },
   {
     title: '操作',
-    key: 'actions',
-    width: 120,
-    render: (row) => {
-      return h('div', { style: 'display: flex; gap: 8px;' }, [
+    colKey: 'actions',
+    width: 140,
+    cell: (h, { row }) => {
+      return h('t-space', { size: 'small' }, [
         h(
-          NButton,
+          't-button',
           {
             size: 'small',
-            quaternary: true,
-            circle: true,
-            onClick: () => viewChain(row),
+            variant: 'text',
+            shape: 'circle',
+            onClick: () => viewChain(row as TableRowData),
           },
-          { icon: () => h(ArrowUp, { style: 'font-size: 16px;' }) },
+          { icon: () => h(ArrowUpIcon) },
         ),
         h(
-          NButton,
+          't-button',
           {
             size: 'small',
-            quaternary: true,
-            circle: true,
-            onClick: () => openEdit(row),
+            variant: 'text',
+            shape: 'circle',
+            onClick: () => openEdit(row as TableRowData),
           },
-          { icon: () => h(Create, { style: 'font-size: 16px;' }) },
+          { icon: () => h(EditIcon) },
         ),
         h(
-          NButton,
+          't-button',
           {
             size: 'small',
-            quaternary: true,
-            circle: true,
-            type: 'error',
-            onClick: () => confirmDelete(row.id),
+            variant: 'text',
+            shape: 'circle',
+            theme: 'danger',
+            onClick: () => confirmDelete((row as { id: number }).id),
           },
-          { icon: () => h(TrashOutline, { style: 'font-size: 16px;' }) },
+          { icon: () => h(DeleteIcon) },
         ),
       ]);
     },
@@ -104,16 +95,12 @@ const columns = computed<DataTableColumns<Tunnel>>(() => [
 ]);
 
 const pagination = computed(() => ({
-  page: page.value,
+  current: page.value,
   pageSize: pageSize.value,
-  itemCount: total.value,
-  showSizePicker: true,
-  pageSizes: [10, 20, 50],
+  total: total.value,
+  showSizer: true,
+  pageSizeOptions: [10, 20, 50],
 }));
-
-function rowKey(row: Tunnel): DataTableRowKey {
-  return row.id;
-}
 
 function formatDateTime(date: string): string {
   return format(new Date(date), 'yyyy-MM-dd HH:mm:ss', { locale: zhCN });
@@ -131,13 +118,13 @@ function getChainSummary(tunnel: Tunnel): string {
   return parts.join(' → ');
 }
 
-function viewChain(tunnel: Tunnel) {
-  selectedChains.value = tunnel.chains || [];
+function viewChain(tunnel: TableRowData) {
+  selectedChains.value = (tunnel as Tunnel).chains || [];
   chainDialogRef.value?.open();
 }
 
-function openEdit(row: Tunnel) {
-  editData.value = row;
+function openEdit(row: TableRowData) {
+  editData.value = row as Tunnel;
   editDialogRef.value?.open();
 }
 
@@ -162,17 +149,19 @@ async function handleDelete() {
   }
 }
 
-function onPage(nextPage: number) {
-  page.value = nextPage;
+function onPage(nextPage: { current: number; pageSize: number }) {
+  page.value = nextPage.current;
+  pageSize.value = nextPage.pageSize;
   refreshData();
 }
 
-function onSort(sorter: { columnKey?: string; order?: string } | null) {
-  if (sorter?.columnKey) {
+function onSort(sorter: { sortBy?: string; descending?: boolean } | Array<{ sortBy?: string; descending?: boolean }>) {
+  const normalized = Array.isArray(sorter) ? sorter[0] : sorter;
+  if (normalized?.sortBy) {
     sortBy.value = [
       {
-        key: sorter.columnKey,
-        order: sorter.order === 'ascend' ? ('asc' as const) : ('desc' as const),
+        key: normalized.sortBy,
+        order: normalized.descending ? ('desc' as const) : ('asc' as const),
       },
     ];
   }
@@ -210,55 +199,93 @@ onMounted(() => {
 </script>
 
 <template>
-  <div style="padding: 24px;">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
-      <div>
-        <h1 style="margin: 0; font-size: 24px;">隧道管理</h1>
-        <p style="margin: 4px 0 0 0; font-size: 14px; color: #999;">管理隧道配置和链路</p>
-      </div>
-      <n-button type="primary" @click="openCreate">
-        <template #icon>
-          <Add style="font-size: 16px;" />
-        </template>
-        新建隧道
-      </n-button>
-    </div>
+  <t-space class="page-container" direction="vertical" size="large">
+    <t-space direction="vertical" size="small">
+      <t-typography-title level="h1">隧道管理</t-typography-title>
+      <t-typography-text theme="secondary">管理隧道配置和链路</t-typography-text>
+    </t-space>
 
-    <n-card>
-      <n-data-table
-        :columns="columns"
-        :data="tunnels"
-        :pagination="pagination"
-        :row-key="rowKey"
-        :loading="loading"
-        :striped="true"
-        @update:page="onPage"
-        @update:sorter="onSort"
-      >
-        <template #empty>
-          <div style="text-align: center; padding: 60px 0; color: #999;">
-            <ArrowForward style="font-size: 64px; margin-bottom: 16px;" />
-            <div style="font-size: 14px;">暂无隧道数据</div>
-          </div>
-        </template>
-      </n-data-table>
-    </n-card>
+    <t-card>
+      <t-space direction="vertical" size="small" class="table-wrapper">
+        <div class="table-actions">
+          <t-button theme="primary" @click="openCreate">
+            <template #icon>
+              <AddIcon />
+            </template>
+            新建隧道
+          </t-button>
+        </div>
+        <t-table
+          :columns="columns"
+          :data="tunnels"
+          :pagination="pagination"
+          :loading="loading"
+          table-layout="fixed"
+          row-key="id"
+          @page-change="onPage"
+          @sort-change="onSort"
+        >
+          <template #empty>
+            <t-empty description="暂无隧道数据">
+              <template #icon>
+                <ArrowRightIcon />
+              </template>
+            </t-empty>
+          </template>
+        </t-table>
+      </t-space>
+    </t-card>
 
-    <n-modal v-model:show="deleteDialog" preset="card" :style="{ width: '400px' }">
-      <template #header>确认删除</template>
-      <div style="display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 12px 0;">
-        <WarningOutline style="font-size: 80px; color: #eab308;" />
-        <p style="margin: 0; text-align: center; color: #666;">确定要删除这个隧道吗？此操作不可恢复。</p>
-      </div>
+    <t-dialog v-model:visible="deleteDialog" header="确认删除" width="400px">
+      <t-space direction="vertical" align="center" class="dialog-body">
+        <ErrorTriangleIcon class="warning-icon" />
+        <p class="dialog-text">确定要删除这个隧道吗？此操作不可恢复。</p>
+      </t-space>
       <template #footer>
-        <n-space justify="end">
-          <n-button @click="deleteDialog = false">取消</n-button>
-          <n-button type="error" @click="handleDelete">确认删除</n-button>
-        </n-space>
+        <t-space align="center" justify="flex-end" class="dialog-footer">
+          <t-button @click="deleteDialog = false">取消</t-button>
+          <t-button theme="danger" @click="handleDelete">确认删除</t-button>
+        </t-space>
       </template>
-    </n-modal>
+    </t-dialog>
 
     <TunnelsEditDialog ref="editDialogRef" :edit-data="editData" @saved="refreshData" />
     <TunnelChainDialog ref="chainDialogRef" :chains="selectedChains" />
-  </div>
+  </t-space>
 </template>
+
+<style scoped>
+.page-container {
+  width: 100%;
+}
+
+.table-wrapper {
+  width: 100%;
+}
+
+.table-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 8px;
+}
+
+.cell-muted {
+  font-size: 13px;
+  color: var(--td-text-color-secondary);
+}
+
+.dialog-body {
+  padding: 12px 0;
+}
+
+.warning-icon {
+  font-size: 80px;
+  color: var(--td-warning-color);
+}
+
+.dialog-text {
+  margin: 0;
+  text-align: center;
+  color: var(--td-text-color-secondary);
+}
+</style>

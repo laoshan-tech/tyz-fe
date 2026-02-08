@@ -1,122 +1,124 @@
 <script setup lang="ts">
-import {
-  NButton,
-  NCard,
-  NDataTable,
-  NModal,
-  NSpace,
-  NTag,
-  type DataTableColumns,
-  type DataTableRowKey,
-} from 'naive-ui';
 import NodesEditDialog from '@/components/NodesEditDialog.vue';
 import { useDataStore } from '@/stores/data';
 import { format } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
 import { h, onMounted, ref, computed } from 'vue';
 import {
-  Add,
-  Create,
-  TrashOutline,
-  ArrowUp,
-  ArrowDown,
-  ServerOutline,
-  WarningOutline,
-} from '@vicons/ionicons5';
+  AddIcon,
+  DeleteIcon,
+  EditIcon,
+  ErrorTriangleIcon,
+  ServerIcon,
+} from 'tdesign-icons-vue-next';
+import type { PrimaryTableCol, TableRowData } from 'tdesign-vue-next';
+import type { RelayNode } from '@/types';
 
 const dataStore = useDataStore();
 const deleteDialog = ref(false);
 const deleteId = ref<number | null>(null);
 const editDialogRef = ref<InstanceType<typeof NodesEditDialog> | null>(null);
-const editData = ref<any>(null);
+const editData = ref<RelayNode | null>(null);
 
-const columns = computed<DataTableColumns<any>>(() => [
-  { title: 'ID', key: 'id', width: 50, sorter: 'default' },
-  { title: '名称', key: 'name', width: 150, sorter: (a, b) => a.name.localeCompare(b.name) },
+const columns = computed<PrimaryTableCol<TableRowData>[]>(() => [
+  { title: 'ID', colKey: 'id', width: 70, sorter: true },
+  { title: '名称', colKey: 'name', width: 160, sorter: true },
   {
     title: '地址',
-    key: 'address',
-    width: 200,
-    sorter: 'default',
+    colKey: 'address',
+    width: 220,
+    sorter: true,
   },
   {
     title: '级别',
-    key: 'level',
-    width: 100,
-    sorter: 'default',
-    render: (row) => {
-      const severity = getLevelSeverity(row.level);
-      return h(NTag, { type: severity }, { default: () => `Lv.${row.level}` });
+    colKey: 'level',
+    width: 110,
+    sorter: true,
+    cell: (h, { row }) => {
+      const severity = getLevelSeverity((row as { level: number }).level);
+      return h('t-tag', { theme: severity }, { default: () => `Lv.${(row as { level: number }).level}` });
     },
   },
   {
     title: '状态',
-    key: 'is_public',
-    width: 100,
-    sorter: 'default',
-    render: (row) => {
+    colKey: 'is_public',
+    width: 120,
+    sorter: true,
+    cell: (h, { row }) => {
       return h(
         'div',
         { style: 'display: flex; align-items: center; gap: 8px;' },
         [
           h('span', {
-            style: `width: 8px; height: 8px; border-radius: 50%; background: ${row.is_public ? '#22c55e' : '#94a3b8'};`,
+            style: `width: 8px; height: 8px; border-radius: 50%; background: ${(row as { is_public: boolean }).is_public ? '#00a870' : '#94a3b8'};`,
           }),
-          h('span', { style: 'font-size: 13px;' }, row.is_public ? '公开' : '私有'),
+          h('span', { style: 'font-size: 13px;' }, (row as { is_public: boolean }).is_public ? '公开' : '私有'),
         ],
       );
     },
   },
   {
     title: '流量',
-    key: 'traffic',
-    width: 200,
-    render: (row) => {
+    colKey: 'traffic',
+    width: 220,
+    cell: (h, { row }) => {
       return h(
         'div',
         { style: 'display: flex; flex-direction: column; gap: 4px;' },
         [
-          h('div', { style: 'font-size: 13px; color: #999;' }, `↑ ${formatTraffic(row.egress_traffic)}`),
-          h('div', { style: 'font-size: 13px; color: #999;' }, `↓ ${formatTraffic(row.ingress_traffic)}`),
+          h(
+            'div',
+            { style: 'font-size: 13px; color: #999;' },
+            `↑ ${formatTraffic((row as { egress_traffic: number }).egress_traffic)}`,
+          ),
+          h(
+            'div',
+            { style: 'font-size: 13px; color: #999;' },
+            `↓ ${formatTraffic((row as { ingress_traffic: number }).ingress_traffic)}`,
+          ),
         ],
       );
     },
   },
   {
     title: '创建时间',
-    key: 'created_at',
-    width: 160,
-    sorter: 'default',
-    render: (row) => {
-      return h('span', { style: 'font-size: 13px; color: #999;' }, formatDateTime(row.created_at));
+    colKey: 'created_at',
+    width: 180,
+    sorter: true,
+    cell: (h, { row }) => {
+      return h(
+        'span',
+        { style: 'font-size: 13px; color: #999;' },
+        formatDateTime((row as { created_at: string }).created_at),
+      );
     },
   },
   {
     title: '操作',
-    key: 'actions',
-    width: 100,
-    render: (row) => {
+    colKey: 'actions',
+    width: 120,
+    cell: (h, { row }) => {
       return h('div', { style: 'display: flex; gap: 8px;' }, [
         h(
-          NButton,
+          't-button',
           {
             size: 'small',
-            quaternary: true,
-            circle: true,
-            onClick: () => openEdit(row),
+            variant: 'text',
+            shape: 'circle',
+            onClick: () => openEdit(row as TableRowData),
           },
-          { icon: () => h(Create, { style: 'font-size: 16px;' }) },
+          { icon: () => h(EditIcon, { style: 'font-size: 16px;' }) },
         ),
         h(
-          NButton,
+          't-button',
           {
             size: 'small',
-            quaternary: true,
-            circle: true,
-            type: 'error',
-            onClick: () => confirmDelete(row.id),
+            variant: 'text',
+            shape: 'circle',
+            theme: 'danger',
+            onClick: () => confirmDelete((row as { id: number }).id),
           },
-          { icon: () => h(TrashOutline, { style: 'font-size: 16px;' }) },
+          { icon: () => h(DeleteIcon, { style: 'font-size: 16px;' }) },
         ),
       ]);
     },
@@ -124,20 +126,16 @@ const columns = computed<DataTableColumns<any>>(() => [
 ]);
 
 const pagination = computed(() => ({
-  page: dataStore.nodes.page,
+  current: dataStore.nodes.page,
   pageSize: dataStore.nodes.pageSize,
-  itemCount: dataStore.nodes.total,
-  showSizePicker: true,
-  pageSizes: [10, 20, 50],
+  total: dataStore.nodes.total,
+  showSizer: true,
+  pageSizeOptions: [10, 20, 50],
 }));
 
-function rowKey(row: any): DataTableRowKey {
-  return row.id;
-}
-
-function getLevelSeverity(level: number): 'success' | 'info' | 'warning' | 'default' {
+function getLevelSeverity(level: number): 'success' | 'primary' | 'warning' | 'default' {
   if (level >= 5) return 'warning';
-  if (level >= 3) return 'info';
+  if (level >= 3) return 'primary';
   return 'success';
 }
 
@@ -158,8 +156,8 @@ function confirmDelete(id: number) {
   deleteDialog.value = true;
 }
 
-function openEdit(row: any) {
-  editData.value = row;
+function openEdit(row: TableRowData) {
+  editData.value = row as RelayNode;
   editDialogRef.value?.open();
 }
 
@@ -179,15 +177,17 @@ async function handleDelete() {
   }
 }
 
-function onPage(page: number) {
-  dataStore.nodes.page = page;
+function onPage(page: { current: number; pageSize: number }) {
+  dataStore.nodes.page = page.current;
+  dataStore.nodes.pageSize = page.pageSize;
   refreshData();
 }
 
-function onSort(sorter: any) {
-  if (sorter && sorter.columnKey) {
+function onSort(sorter: { sortBy?: string; descending?: boolean } | Array<{ sortBy?: string; descending?: boolean }>) {
+  const normalized = Array.isArray(sorter) ? sorter[0] : sorter;
+  if (normalized?.sortBy) {
     dataStore.nodes.sortBy = [
-      { key: sorter.columnKey as string, order: sorter.order === 'ascend' ? 'asc' : 'desc' },
+      { key: normalized.sortBy, order: normalized.descending ? 'desc' : 'asc' },
     ];
   }
   refreshData();
@@ -203,48 +203,85 @@ onMounted(() => {
 </script>
 
 <template>
-  <div style="padding: 24px;">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
-      <div>
-        <h1 style="margin: 0; font-size: 24px;">中继节点</h1>
-        <p style="margin: 4px 0 0 0; font-size: 14px; color: #999;">管理所有中继转发节点</p>
-      </div>
-      <n-button type="primary" @click="openCreate">
-        <template #icon>
-          <Add style="font-size: 16px;" />
-        </template>
-        新建节点
-      </n-button>
-    </div>
+  <t-space direction="vertical" size="large" class="page-container">
+    <t-space direction="vertical" size="small">
+      <t-typography-title level="h1">中继节点</t-typography-title>
+      <t-typography-text theme="secondary">管理所有中继转发节点</t-typography-text>
+    </t-space>
 
-    <n-card>
-      <n-data-table :columns="columns" :data="dataStore.nodes.items" :pagination="pagination" :row-key="rowKey"
-        :loading="dataStore.nodes.loading" :striped="true" @update:page="onPage" @update:sorter="onSort">
-        <template #empty>
-          <div style="text-align: center; padding: 60px 0; color: #999;">
-            <ServerOutline style="font-size: 64px; margin-bottom: 16px;" />
-            <div style="font-size: 14px;">暂无节点数据</div>
-          </div>
-        </template>
-      </n-data-table>
-    </n-card>
+    <t-card>
+      <t-space direction="vertical" size="small" class="table-wrapper">
+        <div class="table-actions">
+          <t-button theme="primary" @click="openCreate">
+            <template #icon>
+              <AddIcon />
+            </template>
+            新建节点
+          </t-button>
+        </div>
+        <t-table
+          :columns="columns"
+          :data="dataStore.nodes.items"
+          :pagination="pagination"
+          :loading="dataStore.nodes.loading"
+          table-layout="fixed"
+          row-key="id"
+          @page-change="onPage"
+          @sort-change="onSort"
+        >
+          <template #empty>
+            <t-empty description="暂无节点数据" />
+          </template>
+        </t-table>
+      </t-space>
+    </t-card>
 
-    <n-modal v-model:show="deleteDialog" preset="card" :style="{ width: '400px' }">
-      <template #header>
-        确认删除
-      </template>
-      <div style="display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 12px 0;">
-        <WarningOutline style="font-size: 80px; color: #eab308;" />
-        <p style="margin: 0; text-align: center; color: #666;">确定要删除这个节点吗？此操作不可恢复。</p>
-      </div>
+    <t-dialog v-model:visible="deleteDialog" header="确认删除" width="400px">
+      <t-space direction="vertical" align="center" size="large" class="dialog-body">
+        <ErrorTriangleIcon size="64" class="dialog-icon" />
+        <span class="dialog-text">确定要删除这个节点吗？此操作不可恢复。</span>
+      </t-space>
       <template #footer>
-        <n-space justify="end">
-          <n-button @click="deleteDialog = false">取消</n-button>
-          <n-button type="error" @click="handleDelete">确认删除</n-button>
-        </n-space>
+        <t-space align="center" class="dialog-footer">
+          <t-button @click="deleteDialog = false">取消</t-button>
+          <t-button theme="danger" @click="handleDelete">确认删除</t-button>
+        </t-space>
       </template>
-    </n-modal>
+    </t-dialog>
 
     <NodesEditDialog ref="editDialogRef" :edit-data="editData" @saved="refreshData" />
-  </div>
+  </t-space>
 </template>
+
+<style scoped>
+.page-container {
+  width: 100%;
+}
+
+.table-wrapper {
+  width: 100%;
+}
+
+.table-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 8px;
+}
+
+.dialog-body {
+  padding: 12px 0;
+}
+
+.dialog-icon {
+  color: var(--td-warning-color);
+}
+
+.dialog-text {
+  color: var(--td-text-color-secondary);
+  text-align: center;
+}
+
+.dialog-footer {
+  justify-content: flex-end;
+}
+</style>

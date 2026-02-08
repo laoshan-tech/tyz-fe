@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { useAuth } from '@/composables/useAuth';
-import { NButton, NCard, NForm, NFormItem, NInput, useMessage } from 'naive-ui';
+import type { FormInstanceFunctions, FormRules } from 'tdesign-vue-next';
+import { MessagePlugin } from 'tdesign-vue-next';
 import { computed, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
 const router = useRouter();
-const message = useMessage();
 const { user, initialize, signIn } = useAuth();
 
 const formData = ref({
@@ -13,7 +13,7 @@ const formData = ref({
   password: '',
 });
 const loading = ref(false);
-const formRef = ref<InstanceType<typeof NForm> | null>(null);
+const formRef = ref<FormInstanceFunctions | null>(null);
 
 const canSubmit = computed(() => {
   return (
@@ -23,24 +23,36 @@ const canSubmit = computed(() => {
   );
 });
 
-const rules = {
-  email: {
-    required: true,
-    message: '请输入邮箱地址',
-    trigger: ['blur', 'input'],
-    validator: (_rule: unknown, value: string) => {
-      if (!value) return new Error('请输入邮箱地址');
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
-        return new Error('邮箱格式不正确');
-      }
-      return true;
+type LoginFormData = {
+  email: string;
+  password: string;
+};
+
+const rules: FormRules<LoginFormData> = {
+  email: [
+    {
+      required: true,
+      message: '请输入邮箱地址',
+      trigger: 'blur',
     },
-  },
-  password: {
-    required: true,
-    message: '请输入密码',
-    trigger: ['blur', 'input'],
-  },
+    {
+      validator: (value: string) => {
+        if (!value) return { result: false, message: '请输入邮箱地址' };
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+          return { result: false, message: '邮箱格式不正确' };
+        }
+        return { result: true, message: '' };
+      },
+      trigger: 'change',
+    },
+  ],
+  password: [
+    {
+      required: true,
+      message: '请输入密码',
+      trigger: 'blur',
+    },
+  ],
 };
 
 async function handleSubmit() {
@@ -53,7 +65,7 @@ async function handleSubmit() {
   if (result.success) {
     router.push('/dashboard');
   } else {
-    message.error(result.error || '用户名或密码错误');
+    MessagePlugin.error(result.error || '用户名或密码错误');
   }
 }
 
@@ -72,26 +84,26 @@ onMounted(() => {
 
 <template>
   <div class="login-page">
-    <n-card title="登录" class="login-card">
-      <n-form ref="formRef" :model="formData" :rules="rules">
-        <n-form-item path="email" label="邮箱">
-          <n-input
-            v-model:value="formData.email"
+    <t-card title="登录" class="login-card">
+      <t-form ref="formRef" :data="formData" :rules="rules">
+        <t-form-item name="email" label="邮箱">
+          <t-input
+            v-model="formData.email"
             type="text"
             placeholder="请输入邮箱地址"
-            @keyup.enter="handleSubmit"
+            @enter="handleSubmit"
           />
-        </n-form-item>
-        <n-form-item path="password" label="密码">
-          <n-input
-            v-model:value="formData.password"
+        </t-form-item>
+        <t-form-item name="password" label="密码">
+          <t-input
+            v-model="formData.password"
             type="password"
             placeholder="请输入密码"
-            @keyup.enter="handleSubmit"
+            @enter="handleSubmit"
           />
-        </n-form-item>
-        <n-button
-          type="primary"
+        </t-form-item>
+        <t-button
+          theme="primary"
           size="large"
           block
           :loading="loading"
@@ -99,9 +111,9 @@ onMounted(() => {
           @click="handleSubmit"
         >
           登录
-        </n-button>
-      </n-form>
-    </n-card>
+        </t-button>
+      </t-form>
+    </t-card>
   </div>
 </template>
 
